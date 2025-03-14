@@ -15,12 +15,12 @@ let
 in
 stdenv.mkDerivation rec {
   name = "llvm-for-buddy-mlir";
-  version = "6c59f0e1b0fb56c909ad7c9aad4bde37dc006ae0";
+  version = "b0ae923ada836fa2c9114ac2c5afb39466f49fe0";
   src = fetchFromGitHub {
     owner = "llvm";
     repo = "llvm-project";
     rev = version;
-    hash = "sha256-bMJJ2q1hSh7m0ewclHOmIe7lOHv110rz/P7D3pw8Uiw=";
+    hash = "sha256-aL0Wb3UlG+Xx5TeCzg++vKCOM6HSme21J8GlE2BsEoQ=";
   };
 
   requiredSystemFeatures = [ "big-parallel" ];

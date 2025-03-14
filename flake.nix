@@ -19,7 +19,9 @@
           # Help other use packages in this flake
           legacyPackages = pkgs;
 
-          devShells.default = pkgs.buddy-llvm.devShell;
+          # devShell = pkgs.mkShell {
+          #           buildInputs = with pkgs; [
+          devShell = pkgs.mkShell { buildInputs = [ pkgs.buddy-llvm ]; };
 
           formatter = pkgs.nixpkgs-fmt;
         }) //

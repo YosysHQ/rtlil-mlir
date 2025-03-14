@@ -24,6 +24,7 @@
 #include "mlir/IR/Dialect.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
+#include "Hello/HelloOps.h.inc"
 #include "Hello/HelloOpsDialect.h.inc"
 
 #endif // HELLO_HELLODIALECT_H

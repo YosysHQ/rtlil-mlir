@@ -112,8 +112,8 @@ int loadAndProcessMLIR(mlir::MLIRContext &context,
   if (mlir::failed(mlir::applyPassManagerCLOptions(passManager)))
     return 4;
 
-  passManager.addPass(hello::createLowerToAffinePass());
-  passManager.addPass(hello::createLowerToLLVMPass());
+  // passManager.addPass(hello::createLowerToAffinePass());
+  // passManager.addPass(hello::createLowerToLLVMPass());
 
   if (mlir::failed(passManager.run(*module))) {
     return 4;
