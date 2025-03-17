@@ -35,11 +35,29 @@ mlir::ModuleOp sayRTLIL(mlir::MLIRContext& context) {
     mlir::Value op = builder.create<rtlil::ConstantOp>(builder.getUnknownLoc(), 1.0);
     return moduleOp;
 }
-int main(int argc, char **argv) {
-    mlir::MLIRContext context;
-    context.getOrLoadDialect<rtlil::RTLILDialect>();
-    auto mop = sayRTLIL(context);
-    mop.print(llvm::outs());
+// int main(int argc, char **argv) {
+//     mlir::MLIRContext context;
+//     context.getOrLoadDialect<rtlil::RTLILDialect>();
+//     auto mop = sayRTLIL(context);
+//     mop.print(llvm::outs());
 
-    return 0;
-}
+//     return 0;
+// }
+
+#include "kernel/yosys.h"
+USING_YOSYS_NAMESPACE
+
+struct MyPass : public Pass {
+    MyPass() : Pass("my_cmd", "just a simple test") { }
+    void execute(std::vector<std::string> args, RTLIL::Design *design) override
+    {
+        log("Arguments to my_cmd:\n");
+        for (auto &arg : args)
+            log("  %s\n", arg.c_str());
+
+        log("Modules in current design:\n");
+        for (auto mod : design->modules())
+            log("  %s (%d wires, %d cells)\n", log_id(mod),
+                    GetSize(mod->wires()), GetSize(mod->cells()));
+    }
+} MyPass;

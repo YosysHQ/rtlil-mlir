@@ -19,9 +19,10 @@
           # Help other use packages in this flake
           legacyPackages = pkgs;
 
-          # devShell = pkgs.mkShell {
-          #           buildInputs = with pkgs; [
-          devShell = pkgs.mkShell { buildInputs = [ pkgs.rtlil-llvm ]; };
+          devShell = pkgs.mkShell { buildInputs = [
+            pkgs.rtlil-llvm
+            pkgs.yosys
+          ]; };
 
           formatter = pkgs.nixpkgs-fmt;
         }) //
