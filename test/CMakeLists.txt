@@ -8,7 +8,7 @@ configure_lit_site_cfg(
 set(RTLIL_TEST_DEPENDS
         FileCheck count not
         mlir-opt
-        rtlil-opt
+        rtlil-emit
         )
 
 add_lit_testsuite(check-rtlil "Running the rtlil regression tests"
