@@ -15,16 +15,17 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef MLIR_HELLO_PASSES_H
-#define MLIR_HELLO_PASSES_H
+#ifndef RTLIL_RTLILOPS_H
+#define RTLIL_RTLILOPS_H
 
-#include <memory>
+#include "mlir/Bytecode/BytecodeOpInterface.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Dialect.h"
+#include "mlir/IR/OpDefinition.h"
+#include "mlir/Interfaces/FunctionInterfaces.h"
+#include "mlir/Interfaces/SideEffectInterfaces.h"
 
-#include "mlir/Pass/Pass.h"
+#define GET_OP_CLASSES
+#include "RTLIL/RTLILOps.h.inc"
 
-namespace hello {
-// std::unique_ptr<mlir::Pass> createLowerToAffinePass();
-// std::unique_ptr<mlir::Pass> createLowerToLLVMPass();
-} // namespace hello
-
-#endif // MLIR_HELLO_PASSES_H
+#endif // RTLIL_RTLILOPS_H

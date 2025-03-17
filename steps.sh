@@ -1,2 +1,3 @@
+#!/usr/bin/env bash
 mkdir build && cd build
-cmake -G Ninja .. -DLLVM_DIR=(llvm-config --cmakedir) -DMLIR_DIR=(llvm-config --cmakedir)/../mlir
+cmake -G Ninja .. -DLLVM_DIR=$(llvm-config --cmakedir) -DMLIR_DIR=$(llvm-config --cmakedir)/../mlir

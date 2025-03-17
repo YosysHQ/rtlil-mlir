@@ -21,4 +21,4 @@ cmake -G Ninja .. \
     -DMLIR_DIR=$PWD/../thirdparty/llvm-project/build/lib/cmake/mlir \
     -Wno-dev
 
-cmake --build . --target check-hello
+cmake --build . --target check-rtlil

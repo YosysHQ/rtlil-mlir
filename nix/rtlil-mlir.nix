@@ -1,6 +1,6 @@
 { lib
 , stdenv
-, buddy-llvm
+, rtlil-llvm
 , cmake
 , ninja
 , llvmPkgs
@@ -11,7 +11,7 @@
 }:
 let
   self = stdenv.mkDerivation {
-    pname = "buddy-mlir";
+    pname = "rtlil-mlir";
     version = "unstable-2024-07-18";
 
     src = with lib.fileset; toSource {
@@ -38,19 +38,19 @@ let
     ];
 
     buildInputs = [
-      buddy-llvm
+      rtlil-llvm
     ];
 
     cmakeFlags = [
-      "-DMLIR_DIR=${buddy-llvm.dev}/lib/cmake/mlir"
-      "-DLLVM_DIR=${buddy-llvm.dev}/lib/cmake/llvm"
-      "-DLLVM_MAIN_SRC_DIR=${buddy-llvm.src}/llvm"
-      "-DBUDDY_MLIR_ENABLE_PYTHON_PACKAGES=ON"
+      "-DMLIR_DIR=${rtlil-llvm.dev}/lib/cmake/mlir"
+      "-DLLVM_DIR=${rtlil-llvm.dev}/lib/cmake/llvm"
+      "-DLLVM_MAIN_SRC_DIR=${rtlil-llvm.src}/llvm"
+      "-Drtlil_MLIR_ENABLE_PYTHON_PACKAGES=ON"
       "-DCMAKE_BUILD_TYPE=Release"
     ];
 
     passthru = {
-      llvm = buddy-llvm;
+      llvm = rtlil-llvm;
       devShell = self.overrideAttrs (old: {
         nativeBuildInputs = old.nativeBuildInputs ++ [
           libjpeg

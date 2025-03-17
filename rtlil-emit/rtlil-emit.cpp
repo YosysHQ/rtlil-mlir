@@ -20,25 +20,25 @@
 // Malarkey
 #define GET_OP_CLASSES
 
-#include "Hello/HelloDialect.h"
-#include "Hello/HelloPasses.h"
+#include "RTLIL/RTLILDialect.h"
+#include "RTLIL/RTLILPasses.h"
 
 // Malarkey - I think this is just not generally exposed?
 namespace mlir {
     class ModuleOp;
 };
 
-mlir::ModuleOp sayHello(mlir::MLIRContext& context) {
+mlir::ModuleOp sayRTLIL(mlir::MLIRContext& context) {
     auto builder = mlir::OpBuilder(&context);
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(builder.getUnknownLoc()));
     builder.setInsertionPointToStart(moduleOp.getBody());
-    mlir::Value op = builder.create<hello::ConstantOp>(builder.getUnknownLoc(), 1.0);
+    mlir::Value op = builder.create<rtlil::ConstantOp>(builder.getUnknownLoc(), 1.0);
     return moduleOp;
 }
 int main(int argc, char **argv) {
     mlir::MLIRContext context;
-    context.getOrLoadDialect<hello::HelloDialect>();
-    auto mop = sayHello(context);
+    context.getOrLoadDialect<rtlil::RTLILDialect>();
+    auto mop = sayRTLIL(context);
     mop.print(llvm::outs());
 
     return 0;

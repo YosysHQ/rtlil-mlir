@@ -21,7 +21,7 @@
 
           # devShell = pkgs.mkShell {
           #           buildInputs = with pkgs; [
-          devShell = pkgs.mkShell { buildInputs = [ pkgs.buddy-llvm ]; };
+          devShell = pkgs.mkShell { buildInputs = [ pkgs.rtlil-llvm ]; };
 
           formatter = pkgs.nixpkgs-fmt;
         }) //

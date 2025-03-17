@@ -15,9 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "Hello/HelloOps.h"
-#include "Hello/HelloDialect.h"
-#include "mlir/IR/OpImplementation.h"
+#ifndef RTLIL_RTLILDIALECT_H
+#define RTLIL_RTLILDIALECT_H
 
-#define GET_OP_CLASSES
-#include "Hello/HelloOps.cpp.inc"
+#include "mlir/IR/BuiltinDialect.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Dialect.h"
+#include "mlir/Interfaces/SideEffectInterfaces.h"
+
+#include "RTLIL/RTLILOps.h.inc"
+#include "RTLIL/RTLILOpsDialect.h.inc"
+
+#endif // RTLIL_RTLILDIALECT_H

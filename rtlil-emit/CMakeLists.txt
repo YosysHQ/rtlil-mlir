@@ -3,7 +3,7 @@ get_property(conversion_libs GLOBAL PROPERTY MLIR_CONVERSION_LIBS)
 set(LIBS
         ${dialect_libs}
         ${conversion_libs}
-        MLIRHello
+        MLIRRTLIL
         MLIRAnalysis
         MLIRCallInterfaces
         MLIRCastInterfaces
@@ -21,13 +21,13 @@ set(LIBS
         MLIRTransforms
         MLIROptLib
         )
-# add_llvm_executable(hello-opt hello-opt.cpp)
-add_llvm_executable(hello-emit hello-emit.cpp)
+# add_llvm_executable(rtlil-opt rtlil-opt.cpp)
+add_llvm_executable(rtlil-emit rtlil-emit.cpp)
 # TODO what are these
-# llvm_update_compile_flags(hello-opt)
-llvm_update_compile_flags(hello-emit)
-# target_link_libraries(hello-opt PRIVATE ${LIBS})
-target_link_libraries(hello-emit PRIVATE ${LIBS})
+# llvm_update_compile_flags(rtlil-opt)
+llvm_update_compile_flags(rtlil-emit)
+# target_link_libraries(rtlil-opt PRIVATE ${LIBS})
+target_link_libraries(rtlil-emit PRIVATE ${LIBS})
 
-# mlir_check_all_link_libraries(hello-opt)
-mlir_check_all_link_libraries(hello-emit)
+# mlir_check_all_link_libraries(rtlil-opt)
+mlir_check_all_link_libraries(rtlil-emit)

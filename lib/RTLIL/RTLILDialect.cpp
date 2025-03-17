@@ -18,36 +18,36 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OpImplementation.h"
 
-#include "Hello/HelloDialect.h"
-#include "Hello/HelloOps.h"
+#include "RTLIL/RTLILDialect.h"
+#include "RTLIL/RTLILOps.h"
 
 using namespace mlir;
-using namespace hello;
+using namespace rtlil;
 
 //===----------------------------------------------------------------------===//
-// Hello dialect.
+// RTLIL dialect.
 //===----------------------------------------------------------------------===//
 
-#include "Hello/HelloOpsDialect.cpp.inc"
+#include "RTLIL/RTLILOpsDialect.cpp.inc"
 
-void HelloDialect::initialize() {
+void RTLILDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "Hello/HelloOps.cpp.inc"
+#include "RTLIL/RTLILOps.cpp.inc"
       >();
 }
 
-void hello::ConstantOp::build(mlir::OpBuilder &builder,
+void rtlil::ConstantOp::build(mlir::OpBuilder &builder,
                               mlir::OperationState &state, double value) {
   auto dataType = RankedTensorType::get({}, builder.getF64Type());
   auto dataAttribute = DenseElementsAttr::get(dataType, value);
-  hello::ConstantOp::build(builder, state, dataType, dataAttribute);
+  rtlil::ConstantOp::build(builder, state, dataType, dataAttribute);
 }
 
-mlir::Operation *HelloDialect::materializeConstant(mlir::OpBuilder &builder,
+mlir::Operation *RTLILDialect::materializeConstant(mlir::OpBuilder &builder,
                                                    mlir::Attribute value,
                                                    mlir::Type type,
                                                    mlir::Location loc) {
-  return builder.create<hello::ConstantOp>(
+  return builder.create<rtlil::ConstantOp>(
       loc, type, mlir::cast<mlir::DenseElementsAttr>(value));
 }

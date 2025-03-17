@@ -1,17 +1,17 @@
-#ifndef HELLO_OPS
-#define HELLO_OPS
+#ifndef RTLIL_OPS
+#define RTLIL_OPS
 
-include "HelloDialect.td"
+include "RTLILDialect.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
-def ConstantOp : Hello_Op<"constant", [Pure]> {
+def ConstantOp : RTLIL_Op<"constant", [Pure]> {
   let summary = "constant";
   let description = [{
     Constant operation turns a literal into an SSA value. The data is attached
     to the operation as an attribute. For example:
 
     ```mlir
-      %0 = "hello.constant"()
+      %0 = "rtlil.constant"()
       { value = dense<[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]> : tensor<2x3xf64> }
       : () -> tensor<2x3xf64>
     ```
@@ -29,7 +29,7 @@ def ConstantOp : Hello_Op<"constant", [Pure]> {
   let results = (outs F64Tensor);
 }
 
-def PrintOp : Hello_Op<"print", [Pure]> {
+def PrintOp : RTLIL_Op<"print", [Pure]> {
     let summary = "print operation";
     let description = [{
         The "print" builtin operation prints a given input tensor, and produces
@@ -42,12 +42,12 @@ def PrintOp : Hello_Op<"print", [Pure]> {
     let assemblyFormat = "$input attr-dict `:` type($input)";
 }
 
-def WorldOp : Hello_Op<"world", [Pure]> {
-    let summary = "print Hello, World";
+def WorldOp : RTLIL_Op<"world", [Pure]> {
+    let summary = "print RTLIL, World";
     let description = [{
-        The "world" operation prints "Hello, World", and produces
+        The "world" operation prints "RTLIL, World", and produces
         no results.
     }];
 }
 
-#endif // HELLO_OPS
+#endif // RTLIL_OPS
