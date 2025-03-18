@@ -21,7 +21,7 @@
 
           devShell = pkgs.mkShell { buildInputs = [
             pkgs.rtlil-llvm
-            pkgs.yosys
+            pkgs.clang-yosys
           ]; };
 
           formatter = pkgs.nixpkgs-fmt;
