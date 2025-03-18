@@ -25,4 +25,14 @@ def RTLIL_Dialect : Dialect {
 class RTLIL_Op<string mnemonic, list<Trait> traits = []> :
         Op<RTLIL_Dialect, mnemonic, traits>;
 
+def CellOp : RTLIL_Op<"cell"> {
+  let arguments = (ins StrAttr:$instanceName,
+                       StrAttr:$moduleName // TODO back to FlatSymbolRefAttr
+                    //    Variadic<AnyType>:$inputs,
+                    //    StrArrayAttr:$argNames, StrArrayAttr:$resultNames,
+                    //    ParamDeclArrayAttr:$parameters,
+                    //    OptionalAttr<InnerSymAttr>:$inner_sym
+                    );
+  let results = (outs Variadic<AnyType>:$results);
+}
 #endif // RTLIL_DIALECT

@@ -11,12 +11,6 @@
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
 
-#include "llvm/IR/Module.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/SourceMgr.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/ToolOutputFile.h"
-
 // Malarkey
 #define GET_OP_CLASSES
 
@@ -24,8 +18,11 @@
 #include "RTLIL/RTLILPasses.h"
 
 // Malarkey - I think this is just not generally exposed?
+// TODO move elsewhere?
 namespace mlir {
     class ModuleOp;
+    class CellOp;
+    class ModuleType;
 };
 
 mlir::ModuleOp sayRTLIL(mlir::MLIRContext& context) {
@@ -33,31 +30,25 @@ mlir::ModuleOp sayRTLIL(mlir::MLIRContext& context) {
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(builder.getUnknownLoc()));
     builder.setInsertionPointToStart(moduleOp.getBody());
     mlir::Value op = builder.create<rtlil::ConstantOp>(builder.getUnknownLoc(), 1.0);
+    mlir::TypeRange newOperands;
+    (void)builder.create<rtlil::CellOp>(builder.getUnknownLoc(), newOperands, "foo", "bar");
     return moduleOp;
 }
-// int main(int argc, char **argv) {
-//     mlir::MLIRContext context;
-//     context.getOrLoadDialect<rtlil::RTLILDialect>();
-//     auto mop = sayRTLIL(context);
-//     mop.print(llvm::outs());
-
-//     return 0;
-// }
 
 #include "kernel/yosys.h"
 USING_YOSYS_NAMESPACE
 
+void emit_module () {} // TODO
+
 struct MyPass : public Pass {
-    MyPass() : Pass("my_cmd", "just a simple test") { }
+    MyPass() : Pass("write_mlir", "Write design as MLIR RTLIL dialect") { }
     void execute(std::vector<std::string> args, RTLIL::Design *design) override
     {
-        log("Arguments to my_cmd:\n");
-        for (auto &arg : args)
-            log("  %s\n", arg.c_str());
-
-        log("Modules in current design:\n");
-        for (auto mod : design->modules())
-            log("  %s (%d wires, %d cells)\n", log_id(mod),
-                    GetSize(mod->wires()), GetSize(mod->cells()));
+        mlir::MLIRContext context;
+        context.getOrLoadDialect<rtlil::RTLILDialect>();
+        auto mop = sayRTLIL(context);
+        mop.print(llvm::outs());
+        for (auto mod : design->selected_modules())
+            emit_module();
     }
 } MyPass;
