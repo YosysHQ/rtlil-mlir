@@ -7,6 +7,8 @@ add_mlir_dialect_library(MLIRRTLIL
 
         DEPENDS
         MLIRRTLILOpsIncGen
+        RTLILAttrDefsIncGen
+        MLIRRTLILAttrDefsIncGen
 
 	LINK_LIBS PUBLIC
 	MLIRIR

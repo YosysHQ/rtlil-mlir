@@ -26,5 +26,9 @@
 
 #include "RTLIL/RTLILOps.h.inc"
 #include "RTLIL/RTLILOpsDialect.h.inc"
+#define GET_TYPEDEF_CLASSES
+#include "RTLIL/RTLILOpsTypes.h.inc"
+#define GET_ATTRDEF_CLASSES
+#include "RTLIL/RTLILAttrDefs.h.inc"
 
 #endif // RTLIL_RTLILDIALECT_H

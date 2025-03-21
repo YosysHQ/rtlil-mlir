@@ -27,11 +27,15 @@ namespace mlir {
 
 mlir::ModuleOp sayRTLIL(mlir::MLIRContext& context) {
     auto builder = mlir::OpBuilder(&context);
-    mlir::ModuleOp moduleOp(mlir::ModuleOp::create(builder.getUnknownLoc()));
+    auto nowhere = builder.getUnknownLoc();
+    mlir::ModuleOp moduleOp(mlir::ModuleOp::create(nowhere));
     builder.setInsertionPointToStart(moduleOp.getBody());
-    mlir::Value op = builder.create<rtlil::ConstantOp>(builder.getUnknownLoc(), 1.0);
+    mlir::Value op = builder.create<rtlil::ConstantOp>(nowhere, 1.0);
     mlir::TypeRange newOperands;
-    (void)builder.create<rtlil::CellOp>(builder.getUnknownLoc(), newOperands, "foo", "bar");
+    rtlil::ModportStruct port = "foosig";
+    mlir::ArrayAttr modports = builder.getArrayAttr({port});
+    // rtlil::ModportStructArrayAttr::get();
+    // (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar");
     return moduleOp;
 }
 
