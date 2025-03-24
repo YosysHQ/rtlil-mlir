@@ -32,9 +32,11 @@ mlir::ModuleOp sayRTLIL(mlir::MLIRContext& context) {
     builder.setInsertionPointToStart(moduleOp.getBody());
     mlir::Value op = builder.create<rtlil::ConstantOp>(nowhere, 1.0);
     mlir::TypeRange newOperands;
-    rtlil::ModportStruct port = "foosig";
+    auto portname = mlir::StringAttr::get(&context, "foosig");
+    auto port = rtlil::ModportStructAttr::get(&context, portname);
     mlir::ArrayAttr modports = builder.getArrayAttr({port});
     // rtlil::ModportStructArrayAttr::get();
+    (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar", modports);
     // (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar");
     return moduleOp;
 }
