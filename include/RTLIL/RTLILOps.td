@@ -23,6 +23,8 @@ def RTLIL_Dialect : Dialect {
     }];
     let cppNamespace = "::rtlil";
     let hasConstantMaterializer = 1;
+    // let useDefaultTypePrinterParser = 1;
+    let useDefaultAttributePrinterParser = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -78,44 +80,18 @@ def ConstantOp : RTLIL_Op<"constant", [Pure]> {
 // Ports
 
 def ModportStruct : RTLIL_Attr<"ModportStruct", "mod_port"> {
-  let assemblyFormat = "`<` struct(params) `>`";
+  let assemblyFormat = "`<` `modport` `:` $signal `>`";
   let parameters = (ins
-                    "StringAttr":$signal);
+                    "::mlir::StringAttr":$signal);
 }
 
 def CellOp : RTLIL_Op<"cell"> {
-  let arguments = (ins StrAttr:$instanceName,
-                       StrAttr:$moduleName,
-                       TypedArrayAttrBase<ModportStruct, "array of modport structs">:$ports
+  let arguments = (ins StrAttr:$instanceName
+                       ,StrAttr:$moduleName
+                       ,TypedArrayAttrBase<ModportStruct, "array of modport structs">:$ports
   );
 }
                       //  , // TODO back to FlatSymbolRefAttr?
   // let results = (outs Variadic<AnyType>:$results);
-
-class MyDialect_Type<string name, string typeMnemonic, list<Trait> traits = []>
-    : TypeDef<RTLIL_Dialect, name, traits> {
-  let mnemonic = typeMnemonic;
-}
-
-// Here is a simple definition of an "integer" type, with a width parameter.
-def My_IntegerType : MyDialect_Type<"Integer", "int"> {
-  let summary = "Integer type with arbitrary precision up to a fixed limit";
-  let description = [{
-    Integer types have a designated bit width.
-  }];
-  /// Here we defined a single parameter for the type, which is the bitwidth.
-  let parameters = (ins "unsigned":$width);
-
-  /// Here we define the textual format of the type declaratively, which will
-  /// automatically generate parser and printer logic. This will allow for
-  /// instances of the type to be output as, for example:
-  ///
-  ///    !my.int<10> // a 10-bit integer.
-  ///
-  let assemblyFormat = "`<` $width `>`";
-
-  /// Indicate that our type will add additional verification to the parameters.
-  let genVerifyDecl = 1;
-}
 
 #endif // RTLIL_OPS

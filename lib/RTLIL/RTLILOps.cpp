@@ -21,6 +21,3 @@
 
 #define GET_OP_CLASSES
 #include "RTLIL/RTLILOps.cpp.inc"
-
-#define GET_ATTRDEF_CLASSES
-#include "RTLIL/RTLILAttrDefs.cpp.inc"

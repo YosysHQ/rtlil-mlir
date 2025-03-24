@@ -17,6 +17,8 @@
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/OpImplementation.h"
+#include "mlir/IR/DialectImplementation.h"
+#include "llvm/ADT/TypeSwitch.h"
 
 #include "RTLIL/RTLILDialect.h"
 #include "RTLIL/RTLILOps.h"
@@ -30,11 +32,27 @@ using namespace rtlil;
 
 #include "RTLIL/RTLILOpsDialect.cpp.inc"
 
+#define GET_ATTRDEF_CLASSES
+#include "RTLIL/RTLILAttrDefs.cpp.inc"
+#undef GET_ATTRDEF_CLASSES
+
+#define GET_TYPEDEF_CLASSES
+#include "RTLIL/RTLILOpsTypes.cpp.inc"
+#undef GET_TYPEDEF_CLASSES
+
 void RTLILDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
 #include "RTLIL/RTLILOps.cpp.inc"
       >();
+  addAttributes<
+#define GET_ATTRDEF_LIST
+#include "RTLIL/RTLILAttrDefs.cpp.inc"
+    >();
+  addTypes<
+#define GET_TYPEDEF_LIST
+#include "RTLIL/RTLILOpsTypes.cpp.inc"
+    >();
 }
 
 void rtlil::ConstantOp::build(mlir::OpBuilder &builder,
