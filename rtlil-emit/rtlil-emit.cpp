@@ -51,40 +51,46 @@ mlir::ModuleOp sayRTLIL(mlir::MLIRContext& ctx) {
 #include "kernel/yosys.h"
 USING_YOSYS_NAMESPACE
 
-rtlil::CellOp convert_cell(mlir::MLIRContext& ctx, mlir::OpBuilder& b, mlir::Location& loc, RTLIL::Cell* cell) {
-    // is this smart?
-    std::vector<mlir::Attribute> connections;
-    std::vector<mlir::Attribute> parameters;
-    for (auto [port, sigspec] : cell->connections()) {
-        log_assert(sigspec.is_wire());
-        auto portname = mlir::StringAttr::get(&ctx, port.c_str());
-        auto wirename = mlir::StringAttr::get(&ctx, sigspec.as_wire()->name.c_str());
-        auto connection = rtlil::CConnectionAttr::get(&ctx, portname, wirename);
-        connections.push_back(connection);
-    }
-    for (auto [param, value] : cell->parameters) {
-        log_assert(value.is_fully_def());
-        auto paramname = mlir::StringAttr::get(&ctx, param.c_str());
-        mlir::Type itype = mlir::IntegerType::get(&ctx, value.size());
-        auto paramvalue = mlir::IntegerAttr::get(itype, value.as_int());
-        auto parameter = rtlil::ParameterAttr::get(&ctx, paramname, paramvalue);
-        parameters.push_back(parameter);
-    }
-    mlir::ArrayAttr cellconnections = b.getArrayAttr(connections);
-    mlir::ArrayAttr cellparameters = b.getArrayAttr(parameters);
-    return b.create<rtlil::CellOp>(loc, "foo", "bar", cellconnections, cellparameters);
-}
+class MLIRifier {
 
-mlir::ModuleOp convert_module(mlir::MLIRContext& ctx, RTLIL::Module* mod) {
-    auto builder = mlir::OpBuilder(&ctx);
-    auto module_loc = builder.getUnknownLoc();
-    mlir::ModuleOp moduleOp(mlir::ModuleOp::create(module_loc));
-    for (auto cell : mod->cells()) {
-        convert_cell(ctx, builder, module_loc, cell).print(llvm::outs());
+    mlir::MLIRContext& ctx;
+    mlir::OpBuilder b;
+    mlir::Location loc;
+public:
+    MLIRifier(mlir::MLIRContext& context) : ctx(context), b(mlir::OpBuilder(&context)), loc(b.getUnknownLoc()) {}
+    rtlil::CellOp convert_cell(RTLIL::Cell* cell) {
+        // is this smart?
+        std::vector<mlir::Attribute> connections;
+        std::vector<mlir::Attribute> parameters;
+        for (auto [port, sigspec] : cell->connections()) {
+            log_assert(sigspec.is_wire());
+            auto portname = mlir::StringAttr::get(&ctx, port.c_str());
+            auto wirename = mlir::StringAttr::get(&ctx, sigspec.as_wire()->name.c_str());
+            auto connection = rtlil::CConnectionAttr::get(&ctx, portname, wirename);
+            connections.push_back(connection);
+        }
+        for (auto [param, value] : cell->parameters) {
+            log_assert(value.is_fully_def());
+            auto paramname = mlir::StringAttr::get(&ctx, param.c_str());
+            mlir::Type itype = mlir::IntegerType::get(&ctx, value.size());
+            auto paramvalue = mlir::IntegerAttr::get(itype, value.as_int());
+            auto parameter = rtlil::ParameterAttr::get(&ctx, paramname, paramvalue);
+            parameters.push_back(parameter);
+        }
+        mlir::ArrayAttr cellconnections = b.getArrayAttr(connections);
+        mlir::ArrayAttr cellparameters = b.getArrayAttr(parameters);
+        return b.create<rtlil::CellOp>(loc, "foo", "bar", cellconnections, cellparameters);
     }
-    moduleOp.print(llvm::outs());
-    return moduleOp;
-}
+
+    mlir::ModuleOp convert_module(RTLIL::Module* mod) {
+        mlir::ModuleOp moduleOp(mlir::ModuleOp::create(loc));
+        b.setInsertionPointToStart(moduleOp.getBody());
+        for (auto cell : mod->cells()) {
+            (void)convert_cell(cell);
+        }
+        return moduleOp;
+    }
+};
 
 struct MyPass : public Pass {
     MyPass() : Pass("write_mlir", "Write design as MLIR RTLIL dialect") { }
@@ -94,7 +100,8 @@ struct MyPass : public Pass {
         ctx.getOrLoadDialect<rtlil::RTLILDialect>();
         // auto mop = sayRTLIL(ctx);
         // mop.print(llvm::outs());
+        MLIRifier mlirifier(ctx);
         for (auto mod : design->selected_modules())
-            convert_module(ctx, mod).print(llvm::outs());
+            mlirifier.convert_module(mod).print(llvm::outs());
     }
 } MyPass;
