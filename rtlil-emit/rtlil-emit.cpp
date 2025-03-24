@@ -81,7 +81,13 @@ public:
         }
         mlir::ArrayAttr cellconnections = b.getArrayAttr(connections);
         mlir::ArrayAttr cellparameters = b.getArrayAttr(parameters);
-        return b.create<rtlil::CellOp>(loc, "foo", "bar", cellconnections, cellparameters);
+        mlir::StringAttr cellname = mlir::StringAttr::get(&ctx, cell->name.c_str());
+        mlir::StringAttr celltype = mlir::StringAttr::get(&ctx, cell->type.c_str());
+        return b.create<rtlil::CellOp>(loc,
+            cellname,
+            celltype,
+            cellconnections,
+            cellparameters);
     }
 
     mlir::ModuleOp convert_module(RTLIL::Module* mod) {
