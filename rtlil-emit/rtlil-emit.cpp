@@ -30,7 +30,6 @@ mlir::ModuleOp sayRTLIL(mlir::MLIRContext& ctx) {
     auto nowhere = builder.getUnknownLoc();
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(nowhere));
     builder.setInsertionPointToStart(moduleOp.getBody());
-    mlir::TypeRange newOperands;
     auto portname = mlir::StringAttr::get(&ctx, "somesig");
     auto wirename = mlir::StringAttr::get(&ctx, "somewire");
     auto connection = rtlil::CConnectionAttr::get(&ctx, portname, wirename);
@@ -44,7 +43,7 @@ mlir::ModuleOp sayRTLIL(mlir::MLIRContext& ctx) {
     // auto port = rtlil::ModportStructAttr::get(&ctx, portname);
     mlir::ArrayAttr params = builder.getArrayAttr({param});
     // rtlil::ModportStructArrayAttr::get();
-    (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar", cellconnections, params);
+    (void)builder.create<rtlil::CellOp>(nowhere, "foo", "bar", cellconnections, params);
     // (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar");
     return moduleOp;
 }
@@ -52,7 +51,40 @@ mlir::ModuleOp sayRTLIL(mlir::MLIRContext& ctx) {
 #include "kernel/yosys.h"
 USING_YOSYS_NAMESPACE
 
-void emit_module () {} // TODO
+rtlil::CellOp convert_cell(mlir::MLIRContext& ctx, mlir::OpBuilder& b, mlir::Location& loc, RTLIL::Cell* cell) {
+    // is this smart?
+    std::vector<mlir::Attribute> connections;
+    std::vector<mlir::Attribute> parameters;
+    for (auto [port, sigspec] : cell->connections()) {
+        log_assert(sigspec.is_wire());
+        auto portname = mlir::StringAttr::get(&ctx, port.c_str());
+        auto wirename = mlir::StringAttr::get(&ctx, sigspec.as_wire()->name.c_str());
+        auto connection = rtlil::CConnectionAttr::get(&ctx, portname, wirename);
+        connections.push_back(connection);
+    }
+    for (auto [param, value] : cell->parameters) {
+        log_assert(value.is_fully_def());
+        auto paramname = mlir::StringAttr::get(&ctx, param.c_str());
+        mlir::Type itype = mlir::IntegerType::get(&ctx, value.size());
+        auto paramvalue = mlir::IntegerAttr::get(itype, value.as_int());
+        auto parameter = rtlil::ParameterAttr::get(&ctx, paramname, paramvalue);
+        parameters.push_back(parameter);
+    }
+    mlir::ArrayAttr cellconnections = b.getArrayAttr(connections);
+    mlir::ArrayAttr cellparameters = b.getArrayAttr(parameters);
+    return b.create<rtlil::CellOp>(loc, "foo", "bar", cellconnections, cellparameters);
+}
+
+mlir::ModuleOp convert_module(mlir::MLIRContext& ctx, RTLIL::Module* mod) {
+    auto builder = mlir::OpBuilder(&ctx);
+    auto module_loc = builder.getUnknownLoc();
+    mlir::ModuleOp moduleOp(mlir::ModuleOp::create(module_loc));
+    for (auto cell : mod->cells()) {
+        convert_cell(ctx, builder, module_loc, cell).print(llvm::outs());
+    }
+    moduleOp.print(llvm::outs());
+    return moduleOp;
+}
 
 struct MyPass : public Pass {
     MyPass() : Pass("write_mlir", "Write design as MLIR RTLIL dialect") { }
@@ -60,9 +92,9 @@ struct MyPass : public Pass {
     {
         mlir::MLIRContext ctx;
         ctx.getOrLoadDialect<rtlil::RTLILDialect>();
-        auto mop = sayRTLIL(ctx);
-        mop.print(llvm::outs());
+        // auto mop = sayRTLIL(ctx);
+        // mop.print(llvm::outs());
         for (auto mod : design->selected_modules())
-            emit_module();
+            convert_module(ctx, mod).print(llvm::outs());
     }
 } MyPass;
