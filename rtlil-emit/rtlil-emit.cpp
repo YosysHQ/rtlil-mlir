@@ -25,18 +25,26 @@ namespace mlir {
     class ModuleType;
 };
 
-mlir::ModuleOp sayRTLIL(mlir::MLIRContext& context) {
-    auto builder = mlir::OpBuilder(&context);
+mlir::ModuleOp sayRTLIL(mlir::MLIRContext& ctx) {
+    auto builder = mlir::OpBuilder(&ctx);
     auto nowhere = builder.getUnknownLoc();
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(nowhere));
     builder.setInsertionPointToStart(moduleOp.getBody());
-    mlir::Value op = builder.create<rtlil::ConstantOp>(nowhere, 1.0);
     mlir::TypeRange newOperands;
-    auto portname = mlir::StringAttr::get(&context, "foosig");
-    auto port = rtlil::ModportStructAttr::get(&context, portname);
-    mlir::ArrayAttr modports = builder.getArrayAttr({port});
+    auto portname = mlir::StringAttr::get(&ctx, "somesig");
+    auto wirename = mlir::StringAttr::get(&ctx, "somewire");
+    auto connection = rtlil::CConnectionAttr::get(&ctx, portname, wirename);
+    // auto port = rtlil::ModportStructAttr::get(&ctx, portname);
+    mlir::ArrayAttr cellconnections = builder.getArrayAttr({connection});
+
+    auto paramname = mlir::StringAttr::get(&ctx, "someparam");
+    mlir::Type i64Ty = mlir::IntegerType::get(&ctx, 64);
+    auto paramvalue = mlir::IntegerAttr::get(i64Ty, 123);
+    auto param = rtlil::ParameterAttr::get(&ctx, paramname, paramvalue);
+    // auto port = rtlil::ModportStructAttr::get(&ctx, portname);
+    mlir::ArrayAttr params = builder.getArrayAttr({param});
     // rtlil::ModportStructArrayAttr::get();
-    (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar", modports);
+    (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar", cellconnections, params);
     // (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar");
     return moduleOp;
 }
@@ -50,9 +58,9 @@ struct MyPass : public Pass {
     MyPass() : Pass("write_mlir", "Write design as MLIR RTLIL dialect") { }
     void execute(std::vector<std::string> args, RTLIL::Design *design) override
     {
-        mlir::MLIRContext context;
-        context.getOrLoadDialect<rtlil::RTLILDialect>();
-        auto mop = sayRTLIL(context);
+        mlir::MLIRContext ctx;
+        ctx.getOrLoadDialect<rtlil::RTLILDialect>();
+        auto mop = sayRTLIL(ctx);
         mop.print(llvm::outs());
         for (auto mod : design->selected_modules())
             emit_module();

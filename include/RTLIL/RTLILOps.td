@@ -9,6 +9,7 @@ include "mlir/IR/OpAsmInterface.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/IR/EnumAttr.td"
 include "mlir/IR/BuiltinAttributeInterfaces.td"
+include "mlir/IR/BuiltinTypes.td"
 
 //===----------------------------------------------------------------------===//
 // RTLIL dialect definition.
@@ -64,6 +65,28 @@ def ConstantOp : RTLIL_Op<"constant", [Pure]> {
   let results = (outs F64Tensor);
 }
 
+def ParamAttr : RTLIL_Attr<"Parameter", "param"> {
+  let parameters = (ins
+                    "::mlir::StringAttr":$name,
+                    "::mlir::IntegerAttr":$value);
+  let assemblyFormat = "$name $value ";
+}
+
+def ParametersAttr
+  : TypedArrayAttrBase<ParamAttr, "port to wire connections">;
+
+def CConnAttr : RTLIL_Attr<"CConnection", "conn"> {
+  let parameters = (ins
+                    "::mlir::StringAttr":$port,
+                    "::mlir::StringAttr":$signal);
+  let assemblyFormat = " $port $signal ";
+}
+
+def CConnectionsAttr
+  : TypedArrayAttrBase<CConnAttr, "port to wire connections">;
+
+// TODO WConnections
+
 // def ArrayRefIntParam : TypeParameter<"::llvm::ArrayRef<int>", "Array of int"> {
 //   let allocator = "$_dst = $_allocator.copyInto($_self);";
 // }
@@ -79,16 +102,17 @@ def ConstantOp : RTLIL_Op<"constant", [Pure]> {
 
 // Ports
 
-def ModportStruct : RTLIL_Attr<"ModportStruct", "mod_port"> {
-  let assemblyFormat = "`<` `modport` `:` $signal `>`";
-  let parameters = (ins
-                    "::mlir::StringAttr":$signal);
-}
+// def ModportStruct : RTLIL_Attr<"ModportStruct", "mod_port"> {
+//   let assemblyFormat = "`<` `modport` `:` $signal `>`";
+//   let parameters = (ins
+//                     "::mlir::StringAttr":$signal);
+// }
 
 def CellOp : RTLIL_Op<"cell"> {
   let arguments = (ins StrAttr:$instanceName
                        ,StrAttr:$moduleName
-                       ,TypedArrayAttrBase<ModportStruct, "array of modport structs">:$ports
+                       ,CConnectionsAttr:$connections
+                       ,ParametersAttr:$parameters
   );
 }
                       //  , // TODO back to FlatSymbolRefAttr?
