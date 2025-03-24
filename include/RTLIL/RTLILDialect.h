@@ -24,6 +24,7 @@
 #include "mlir/IR/Dialect.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
+#define GET_OP_CLASSES
 #include "RTLIL/RTLILOps.h.inc"
 #include "RTLIL/RTLILOpsDialect.h.inc"
 #define GET_TYPEDEF_CLASSES

@@ -10,9 +10,10 @@
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
+#include "llvm/Support/raw_os_ostream.h"
 
 // Malarkey
-#define GET_OP_CLASSES
+// #define GET_OP_CLASSES
 
 #include "RTLIL/RTLILDialect.h"
 #include "RTLIL/RTLILPasses.h"
@@ -51,8 +52,9 @@ mlir::ModuleOp sayRTLIL(mlir::MLIRContext& ctx) {
 #include "kernel/yosys.h"
 USING_YOSYS_NAMESPACE
 
+// TODO This is awful naming, what's the nomenclature?
+// From the MLIR perspective this is an importer, but it's a yosys backend
 class MLIRifier {
-
     mlir::MLIRContext& ctx;
     mlir::OpBuilder b;
     mlir::Location loc;
@@ -92,16 +94,20 @@ public:
     }
 };
 
-struct MyPass : public Pass {
-    MyPass() : Pass("write_mlir", "Write design as MLIR RTLIL dialect") { }
-    void execute(std::vector<std::string> args, RTLIL::Design *design) override
+struct MlirBackend : public Backend {
+    MlirBackend() : Backend("mlir", "Write design as MLIR RTLIL dialect") { }
+    // TODO help
+    void execute(std::ostream *&f, std::string filename, std::vector<std::string> args, RTLIL::Design *design) override
     {
+        log_header(design, "Executing MLIR backend.\n");
+		size_t argidx;
+		for (argidx = 1; argidx < args.size(); argidx++) {}
+        extra_args(f, filename, args, argidx);
+        llvm::raw_os_ostream osos(*f);
         mlir::MLIRContext ctx;
         ctx.getOrLoadDialect<rtlil::RTLILDialect>();
-        // auto mop = sayRTLIL(ctx);
-        // mop.print(llvm::outs());
         MLIRifier mlirifier(ctx);
         for (auto mod : design->selected_modules())
-            mlirifier.convert_module(mod).print(llvm::outs());
+            mlirifier.convert_module(mod).print(osos);
     }
 } MyPass;

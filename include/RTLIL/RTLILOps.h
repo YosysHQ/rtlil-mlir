@@ -25,7 +25,4 @@
 #include "mlir/Interfaces/FunctionInterfaces.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
-#define GET_OP_CLASSES
-#include "RTLIL/RTLILOps.h.inc"
-
 #endif // RTLIL_RTLILOPS_H
