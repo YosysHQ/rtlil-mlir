@@ -22,33 +22,7 @@
 // TODO move elsewhere?
 namespace mlir {
 class ModuleOp;
-class CellOp;
-class ModuleType;
 }; // namespace mlir
-
-mlir::ModuleOp sayRTLIL(mlir::MLIRContext &ctx) {
-  auto builder = mlir::OpBuilder(&ctx);
-  auto nowhere = builder.getUnknownLoc();
-  mlir::ModuleOp moduleOp(mlir::ModuleOp::create(nowhere));
-  builder.setInsertionPointToStart(moduleOp.getBody());
-  auto portname = mlir::StringAttr::get(&ctx, "somesig");
-  auto wirename = mlir::StringAttr::get(&ctx, "somewire");
-  auto connection = rtlil::CConnectionAttr::get(&ctx, portname, wirename);
-  // auto port = rtlil::ModportStructAttr::get(&ctx, portname);
-  mlir::ArrayAttr cellconnections = builder.getArrayAttr({connection});
-
-  auto paramname = mlir::StringAttr::get(&ctx, "someparam");
-  mlir::Type i64Ty = mlir::IntegerType::get(&ctx, 64);
-  auto paramvalue = mlir::IntegerAttr::get(i64Ty, 123);
-  auto param = rtlil::ParameterAttr::get(&ctx, paramname, paramvalue);
-  // auto port = rtlil::ModportStructAttr::get(&ctx, portname);
-  mlir::ArrayAttr params = builder.getArrayAttr({param});
-  // rtlil::ModportStructArrayAttr::get();
-  (void)builder.create<rtlil::CellOp>(nowhere, "foo", "bar", cellconnections,
-                                      params);
-  // (void)builder.create<rtlil::CellOp>(nowhere, newOperands, "foo", "bar");
-  return moduleOp;
-}
 
 #include "kernel/yosys.h"
 USING_YOSYS_NAMESPACE
@@ -63,6 +37,21 @@ class MLIRifier {
 public:
   MLIRifier(mlir::MLIRContext &context)
       : ctx(context), b(mlir::OpBuilder(&context)), loc(b.getUnknownLoc()) {}
+
+  rtlil::WireOp convert_wire(RTLIL::Wire *wire) {
+    return b.create<rtlil::WireOp>(
+      loc,
+      mlir::StringAttr::get(&ctx, wire->name.c_str()),
+      mlir::IntegerAttr::get(b.getI32Type(), wire->width),
+      mlir::IntegerAttr::get(b.getI32Type(), wire->start_offset),
+      mlir::IntegerAttr::get(b.getI32Type(), wire->port_id),
+      mlir::BoolAttr::get(&ctx, wire->port_input),
+      mlir::BoolAttr::get(&ctx, wire->port_output),
+      mlir::BoolAttr::get(&ctx, wire->upto),
+      mlir::BoolAttr::get(&ctx, wire->is_signed)
+    );
+  }
+
   rtlil::CellOp convert_cell(RTLIL::Cell *cell) {
     // is this smart?
     std::vector<mlir::Attribute> connections;
@@ -92,8 +81,11 @@ public:
   }
 
   mlir::ModuleOp convert_module(RTLIL::Module *mod) {
-    mlir::ModuleOp moduleOp(mlir::ModuleOp::create(loc));
+    mlir::ModuleOp moduleOp(mlir::ModuleOp::create(loc, mod->name.c_str()));
     b.setInsertionPointToStart(moduleOp.getBody());
+    for (auto wire : mod->wires()) {
+      (void)convert_wire(wire);
+    }
     for (auto cell : mod->cells()) {
       (void)convert_cell(cell);
     }

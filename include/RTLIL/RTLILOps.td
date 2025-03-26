@@ -10,6 +10,7 @@ include "mlir/IR/SymbolInterfaces.td"
 include "mlir/IR/EnumAttr.td"
 include "mlir/IR/BuiltinAttributeInterfaces.td"
 include "mlir/IR/BuiltinTypes.td"
+include "mlir/IR/CommonAttrConstraints.td"
 
 //===----------------------------------------------------------------------===//
 // RTLIL dialect definition.
@@ -87,30 +88,21 @@ def CConnectionsAttr
 
 // TODO WConnections
 
-// def ArrayRefIntParam : TypeParameter<"::llvm::ArrayRef<int>", "Array of int"> {
-//   let allocator = "$_dst = $_allocator.copyInto($_self);";
-// }
-
-// def StrAttributeAttr : RTLIL_Attr<"StrAttribute", "str_attr"> {
-//   let summary = "a string Attribute";
-//   // let mnemonic = "attribute";
-//   let parameters = (ins
-//     "::mlir::StringAttr":$name,
-//     ArrayRefIntParam:$value
-//   );
-// }
-
-// Ports
-
-// def ModportStruct : RTLIL_Attr<"ModportStruct", "mod_port"> {
-//   let assemblyFormat = "`<` `modport` `:` $signal `>`";
-//   let parameters = (ins
-//                     "::mlir::StringAttr":$signal);
-// }
-
+// TODO Is I32 correct?
+def WireOp : RTLIL_Op<"wire"> {
+  let arguments = (ins StrAttr:$name
+                       ,I32Attr:$width
+                       ,I32Attr:$start_offset
+                       ,I32Attr:$port_id
+                       ,DefaultValuedAttr<BoolAttr, "false">:$port_input
+                       ,DefaultValuedAttr<BoolAttr, "false">:$port_output
+                       ,DefaultValuedAttr<BoolAttr, "false">:$upto
+                       ,BoolAttr:$is_signed
+  );
+}
 def CellOp : RTLIL_Op<"cell"> {
-  let arguments = (ins StrAttr:$instanceName
-                       ,StrAttr:$moduleName
+  let arguments = (ins StrAttr:$name
+                       ,StrAttr:$type
                        ,CConnectionsAttr:$connections
                        ,ParametersAttr:$parameters
   );
