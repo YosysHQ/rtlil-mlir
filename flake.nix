@@ -20,8 +20,9 @@
           legacyPackages = pkgs;
 
           devShell = pkgs.mkShell { buildInputs = [
-            pkgs.rtlil-llvm
             pkgs.clang-yosys
+            pkgs.circt
+            pkgs.circt.llvm
           ]; };
 
           formatter = pkgs.nixpkgs-fmt;
