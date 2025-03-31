@@ -9,7 +9,6 @@ rec {
   }).overrideAttrs (finalAttrs: previousAttrs: {
     doCheck = false;
     makeFlags = previousAttrs.makeFlags ++ [
-      "SMALL=1"
       "ENABLE_ABC=0"
     ];
   });
