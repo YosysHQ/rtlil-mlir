@@ -75,6 +75,7 @@ public:
         std::vector<mlir::Attribute> const_bits;
         RTLIL::Const domain_const = sigspec.as_const();
         rtlil::ConstOp c = convert_const(&domain_const);
+        log_assert(c.verify().succeeded());
         signature.push_back(portattr);
         connections.push_back(c.getResult());
       } else if (sigspec.is_wire()) {
@@ -117,13 +118,13 @@ public:
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(loc, mod->name.c_str()));
     b.setInsertionPointToStart(moduleOp.getBody());
     for (auto wire : mod->wires()) {
-      (void)convert_wire(wire);
+      log_assert(convert_wire(wire).verify().succeeded());
     }
     for (auto cell : mod->cells()) {
-      (void)convert_cell(cell);
+      log_assert(convert_cell(cell).verify().succeeded());
     }
     for (auto conn : mod->connections()) {
-      (void)convert_connection(conn);
+      log_assert(convert_connection(conn).verify().succeeded());
     }
     return moduleOp;
   }
