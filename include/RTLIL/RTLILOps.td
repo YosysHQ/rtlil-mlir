@@ -24,7 +24,7 @@ def RTLIL_Dialect : Dialect {
         for MLIR.
     }];
     let cppNamespace = "::rtlil";
-    let hasConstantMaterializer = 1;
+    // let hasConstantMaterializer = 1;
     // let useDefaultTypePrinterParser = 1;
     let useDefaultAttributePrinterParser = 1;
 }
@@ -41,30 +41,12 @@ class RTLIL_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
   let mnemonic = attrMnemonic;
 }
 
-def ConstantOp : RTLIL_Op<"constant", [Pure]> {
-  let summary = "constant";
-  let description = [{
-    Constant operation turns a literal into an SSA value. The data is attached
-    to the operation as an attribute. For example:
+// class RTLIL_Type<string name, string typeMnemonic, list<Trait> traits = []>
+//     : DialectType<RTLIL_Dialect, name, traits> {
+//   let mnemonic = typeMnemonic;
+// }
 
-    ```mlir
-      %0 = "rtlil.constant"()
-      { value = dense<[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]> : tensor<2x3xf64> }
-      : () -> tensor<2x3xf64>
-    ```
-  }];
-
-  let builders = [
-    OpBuilder<(ins "mlir::DenseElementsAttr":$value), [{
-      build($_builder, $_state, value.getType(), value);
-    }]>,
-    OpBuilder<(ins "double":$value)>
-  ];
-
-//  let parser = [{ return ::parseConstantOp(parser, result); }];
-  let arguments = (ins F64ElementsAttr:$value);
-  let results = (outs F64Tensor);
-}
+// Parameters
 
 def ParamAttr : RTLIL_Attr<"Parameter", "param"> {
   let parameters = (ins
@@ -76,17 +58,38 @@ def ParamAttr : RTLIL_Attr<"Parameter", "param"> {
 def ParametersAttr
   : TypedArrayAttrBase<ParamAttr, "port to wire connections">;
 
-def CConnAttr : RTLIL_Attr<"CConnection", "conn"> {
-  let parameters = (ins
-                    "::mlir::StringAttr":$port,
-                    "::mlir::StringAttr":$signal);
-  let assemblyFormat = " $port $signal ";
+// Connectivity
+
+class I8EnumAttrCase<string sym, int val, string str = sym>
+    : IntEnumAttrCaseBase<I8, sym, str, val>;
+def StateS0: I8EnumAttrCase<"S0", 0>;
+def StateS1: I8EnumAttrCase<"S1", 1>;
+def StateSx: I8EnumAttrCase<"Sx", 2>;
+def StateSz: I8EnumAttrCase<"Sz", 3>;
+def StateSa: I8EnumAttrCase<"Sa", 4>;
+def StateSm: I8EnumAttrCase<"Sm", 5>;
+
+class I8EnumAttr<string name, string summary, list<I8EnumAttrCase> cases> :
+    IntEnumAttr<I8, name, summary, cases> {
+  let underlyingType = "uint8_t";
 }
 
-def CConnectionsAttr
-  : TypedArrayAttrBase<CConnAttr, "port to wire connections">;
+def StateEnumAttr: I8EnumAttr<"StateEnum", "RTLIL::State model",
+    [StateS0, StateS1, StateSx, StateSz, StateSa, StateSm]> {
+  let stringToSymbolFnName = "ConvertToEnum";
+  let symbolToStringFnName = "ConvertToString";
+  let cppNamespace = "::rtlil";
+}
 
-// TODO WConnections
+def RTLILValue : DialectType<RTLIL_Dialect, CPred<"true">, "value"> {}
+
+def ConstAttr
+  : TypedArrayAttrBase<StateEnumAttr, "constant multi-valued bitvec">;
+
+def ConstOp : RTLIL_Op<"const"> {
+  let arguments = (ins ConstAttr:$value);
+  let results = (outs RTLILValue:$result);
+}
 
 // TODO Is I32 correct?
 def WireOp : RTLIL_Op<"wire"> {
@@ -99,14 +102,21 @@ def WireOp : RTLIL_Op<"wire"> {
                        ,DefaultValuedAttr<BoolAttr, "false">:$upto
                        ,BoolAttr:$is_signed
   );
+  let results = (outs RTLILValue:$result);
 }
+
 def CellOp : RTLIL_Op<"cell"> {
   let arguments = (ins StrAttr:$name
                        ,StrAttr:$type
-                       ,CConnectionsAttr:$connections
+                       ,Variadic<AnyType>:$connections
+                       ,TypedArrayAttrBase<StrAttr, "port names">:$ports
                        ,ParametersAttr:$parameters
   );
 }
+
+// def WConnectionOp : RTLIL_Op<"wconnection"> {
+//   let arguments = (ins WireOp:$this, WireOp:$that);
+// }
                       //  , // TODO back to FlatSymbolRefAttr?
   // let results = (outs Variadic<AnyType>:$results);
 

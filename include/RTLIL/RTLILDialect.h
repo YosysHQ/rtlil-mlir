@@ -24,12 +24,13 @@
 #include "mlir/IR/Dialect.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
-#define GET_OP_CLASSES
-#include "RTLIL/RTLILOps.h.inc"
-#include "RTLIL/RTLILOpsDialect.h.inc"
 #define GET_TYPEDEF_CLASSES
 #include "RTLIL/RTLILOpsTypes.h.inc"
 #define GET_ATTRDEF_CLASSES
 #include "RTLIL/RTLILAttrDefs.h.inc"
+#include "RTLIL/RTLILEnums.h.inc"
+#define GET_OP_CLASSES
+#include "RTLIL/RTLILOps.h.inc"
+#include "RTLIL/RTLILOpsDialect.h.inc"
 
 #endif // RTLIL_RTLILDIALECT_H

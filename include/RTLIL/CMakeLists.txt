@@ -4,8 +4,12 @@ add_mlir_dialect(RTLILOps rtlil)
 
 set(LLVM_TARGET_DEFINITIONS RTLILOps.td)
 mlir_tablegen(RTLILAttrDefs.h.inc -gen-attrdef-decls
-              -attrdefs-dialect=rtlil)
+-attrdefs-dialect=rtlil)
 mlir_tablegen(RTLILAttrDefs.cpp.inc -gen-attrdef-defs
-              -attrdefs-dialect=rtlil)
+-attrdefs-dialect=rtlil)
 add_public_tablegen_target(MLIRRTLILAttrDefsIncGen)
-add_public_tablegen_target(RTLILAttrDefsIncGen)
+
+set(LLVM_TARGET_DEFINITIONS RTLILOps.td)
+mlir_tablegen(RTLILEnums.h.inc -gen-enum-decls)
+mlir_tablegen(RTLILEnums.cpp.inc -gen-enum-defs)
+add_public_tablegen_target(MLIRRTLILEnumDefsIncGen)

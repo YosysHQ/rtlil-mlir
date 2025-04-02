@@ -31,6 +31,7 @@ using namespace rtlil;
 //===----------------------------------------------------------------------===//
 
 #include "RTLIL/RTLILOpsDialect.cpp.inc"
+#include "RTLIL/RTLILEnums.cpp.inc"
 
 #define GET_ATTRDEF_CLASSES
 #include "RTLIL/RTLILAttrDefs.cpp.inc"
@@ -53,19 +54,4 @@ void RTLILDialect::initialize() {
 #define GET_TYPEDEF_LIST
 #include "RTLIL/RTLILOpsTypes.cpp.inc"
     >();
-}
-
-void rtlil::ConstantOp::build(mlir::OpBuilder &builder,
-                              mlir::OperationState &state, double value) {
-  auto dataType = RankedTensorType::get({}, builder.getF64Type());
-  auto dataAttribute = DenseElementsAttr::get(dataType, value);
-  rtlil::ConstantOp::build(builder, state, dataType, dataAttribute);
-}
-
-mlir::Operation *RTLILDialect::materializeConstant(mlir::OpBuilder &builder,
-                                                   mlir::Attribute value,
-                                                   mlir::Type type,
-                                                   mlir::Location loc) {
-  return builder.create<rtlil::ConstantOp>(
-      loc, type, mlir::cast<mlir::DenseElementsAttr>(value));
 }

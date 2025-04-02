@@ -12,9 +12,6 @@
 #include "mlir/Target/LLVMIR/Export.h"
 #include "llvm/Support/raw_os_ostream.h"
 
-// Malarkey
-// #define GET_OP_CLASSES
-
 #include "RTLIL/RTLILDialect.h"
 #include "RTLIL/RTLILPasses.h"
 
@@ -33,36 +30,61 @@ class MLIRifier {
   mlir::MLIRContext &ctx;
   mlir::OpBuilder b;
   mlir::Location loc;
+  llvm::StringMap<rtlil::WireOp> wiremap;
 
 public:
   MLIRifier(mlir::MLIRContext &context)
       : ctx(context), b(mlir::OpBuilder(&context)), loc(b.getUnknownLoc()) {}
 
   rtlil::WireOp convert_wire(RTLIL::Wire *wire) {
-    return b.create<rtlil::WireOp>(
-      loc,
-      mlir::StringAttr::get(&ctx, wire->name.c_str()),
-      mlir::IntegerAttr::get(b.getI32Type(), wire->width),
-      mlir::IntegerAttr::get(b.getI32Type(), wire->start_offset),
-      mlir::IntegerAttr::get(b.getI32Type(), wire->port_id),
-      mlir::BoolAttr::get(&ctx, wire->port_input),
-      mlir::BoolAttr::get(&ctx, wire->port_output),
-      mlir::BoolAttr::get(&ctx, wire->upto),
-      mlir::BoolAttr::get(&ctx, wire->is_signed)
-    );
+    log_assert(!wiremap.contains(wire->name.c_str()));
+    // TODO custom return type
+    return wiremap[wire->name.c_str()] = b.create<rtlil::WireOp>(
+               loc, mlir::IntegerType::get(&ctx, 32),
+               mlir::StringAttr::get(&ctx, wire->name.c_str()),
+               mlir::IntegerAttr::get(b.getI32Type(), wire->width),
+               mlir::IntegerAttr::get(b.getI32Type(), wire->start_offset),
+               mlir::IntegerAttr::get(b.getI32Type(), wire->port_id),
+               mlir::BoolAttr::get(&ctx, wire->port_input),
+               mlir::BoolAttr::get(&ctx, wire->port_output),
+               mlir::BoolAttr::get(&ctx, wire->upto),
+               mlir::BoolAttr::get(&ctx, wire->is_signed));
+  }
+
+  rtlil::ConstOp convert_const(RTLIL::Const *c) {
+    std::vector<mlir::Attribute> const_bits;
+    for (auto bit : c->bits())
+      const_bits.push_back(
+          rtlil::StateEnumAttr::get(&ctx, (rtlil::StateEnum)bit));
+    mlir::ArrayAttr aa = b.getArrayAttr(const_bits);
+    // TODO custom return type
+    return b.create<rtlil::ConstOp>(loc, mlir::IntegerType::get(&ctx, 32),
+                                    (mlir::ArrayAttr)aa);
   }
 
   rtlil::CellOp convert_cell(RTLIL::Cell *cell) {
     // is this smart?
-    std::vector<mlir::Attribute> connections;
+    std::vector<mlir::Value> connections;
     std::vector<mlir::Attribute> parameters;
+    std::vector<mlir::Attribute> signature;
     for (auto [port, sigspec] : cell->connections()) {
-      log_assert(sigspec.is_wire());
-      auto portname = mlir::StringAttr::get(&ctx, port.c_str());
-      auto wirename =
-          mlir::StringAttr::get(&ctx, sigspec.as_wire()->name.c_str());
-      auto connection = rtlil::CConnectionAttr::get(&ctx, portname, wirename);
-      connections.push_back(connection);
+      auto portname = std::string(port.c_str());
+      auto portattr = mlir::StringAttr::get(&ctx, portname);
+      if (sigspec.is_fully_const()) {
+        std::vector<mlir::Attribute> const_bits;
+        RTLIL::Const domain_const = sigspec.as_const();
+        rtlil::ConstOp c = convert_const(&domain_const);
+        signature.push_back(portattr);
+        connections.push_back(c.getResult());
+      } else if (sigspec.is_wire()) {
+        signature.push_back(portattr);
+        std::string wirename = sigspec.as_wire()->name.c_str();
+        log_assert(wiremap.contains(wirename));
+        connections.push_back(wiremap[wirename].getResult());
+      } else {
+        log_error("Found SigSpec that isn't a constant or full wire "
+                  "connection, did you run splice?");
+      }
     }
     for (auto [param, value] : cell->parameters) {
       log_assert(value.is_fully_def());
@@ -72,13 +94,17 @@ public:
       auto parameter = rtlil::ParameterAttr::get(&ctx, paramname, paramvalue);
       parameters.push_back(parameter);
     }
-    mlir::ArrayAttr cellconnections = b.getArrayAttr(connections);
     mlir::ArrayAttr cellparameters = b.getArrayAttr(parameters);
     mlir::StringAttr cellname = mlir::StringAttr::get(&ctx, cell->name.c_str());
     mlir::StringAttr celltype = mlir::StringAttr::get(&ctx, cell->type.c_str());
-    return b.create<rtlil::CellOp>(loc, cellname, celltype, cellconnections,
-                                   cellparameters);
+    mlir::ArrayAttr cellsignature = b.getArrayAttr(signature);
+    return b.create<rtlil::CellOp>(loc, cellname, celltype, connections,
+                                   cellsignature, cellparameters);
   }
+
+  // rtlil::WConnectionOp convert_connection(RTLIL::Wire *this, RTLIL::Wire
+  // *that) {
+  // }
 
   mlir::ModuleOp convert_module(RTLIL::Module *mod) {
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(loc, mod->name.c_str()));
@@ -89,6 +115,9 @@ public:
     for (auto cell : mod->cells()) {
       (void)convert_cell(cell);
     }
+    // for (auto conn : mod->connections()) {
+    //   (void)convert_connection(conn.second);
+    // }
     return moduleOp;
   }
 };
