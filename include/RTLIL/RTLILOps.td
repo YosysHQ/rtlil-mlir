@@ -114,9 +114,9 @@ def CellOp : RTLIL_Op<"cell"> {
   );
 }
 
-// def WConnectionOp : RTLIL_Op<"wconnection"> {
-//   let arguments = (ins WireOp:$this, WireOp:$that);
-// }
+def WConnectionOp : RTLIL_Op<"wconnection"> {
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+}
                       //  , // TODO back to FlatSymbolRefAttr?
   // let results = (outs Variadic<AnyType>:$results);
 

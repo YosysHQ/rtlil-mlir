@@ -30,16 +30,17 @@ class MLIRifier {
   mlir::MLIRContext &ctx;
   mlir::OpBuilder b;
   mlir::Location loc;
-  llvm::StringMap<rtlil::WireOp> wiremap;
+  // This is really stupid actually
+  llvm::DenseMap<RTLIL::Wire *, rtlil::WireOp> wiremap;
 
 public:
   MLIRifier(mlir::MLIRContext &context)
       : ctx(context), b(mlir::OpBuilder(&context)), loc(b.getUnknownLoc()) {}
 
   rtlil::WireOp convert_wire(RTLIL::Wire *wire) {
-    log_assert(!wiremap.contains(wire->name.c_str()));
+    log_assert(!wiremap.contains(wire));
     // TODO custom return type
-    return wiremap[wire->name.c_str()] = b.create<rtlil::WireOp>(
+    return wiremap[wire] = b.create<rtlil::WireOp>(
                loc, mlir::IntegerType::get(&ctx, 32),
                mlir::StringAttr::get(&ctx, wire->name.c_str()),
                mlir::IntegerAttr::get(b.getI32Type(), wire->width),
@@ -78,9 +79,9 @@ public:
         connections.push_back(c.getResult());
       } else if (sigspec.is_wire()) {
         signature.push_back(portattr);
-        std::string wirename = sigspec.as_wire()->name.c_str();
-        log_assert(wiremap.contains(wirename));
-        connections.push_back(wiremap[wirename].getResult());
+        RTLIL::Wire *wire = sigspec.as_wire();
+        log_assert(wiremap.contains(wire));
+        connections.push_back(wiremap[wire].getResult());
       } else {
         log_error("Found SigSpec that isn't a constant or full wire "
                   "connection, did you run splice?");
@@ -102,9 +103,15 @@ public:
                                    cellsignature, cellparameters);
   }
 
-  // rtlil::WConnectionOp convert_connection(RTLIL::Wire *this, RTLIL::Wire
-  // *that) {
-  // }
+  rtlil::WConnectionOp convert_connection(RTLIL::SigSig ss) {
+    SigSpec sslhs, ssrhs;
+    std::tie(sslhs, ssrhs) = ss;
+    RTLIL::Wire *lhs, *rhs;
+    log_assert(sslhs.is_wire() && ssrhs.is_wire());
+    std::tie(lhs, rhs) = std::make_tuple(sslhs.as_wire(), ssrhs.as_wire());
+    log_assert(wiremap.contains(lhs) && wiremap.contains(rhs));
+    return b.create<rtlil::WConnectionOp>(loc, wiremap[lhs], wiremap[rhs]);
+  }
 
   mlir::ModuleOp convert_module(RTLIL::Module *mod) {
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(loc, mod->name.c_str()));
@@ -115,9 +122,9 @@ public:
     for (auto cell : mod->cells()) {
       (void)convert_cell(cell);
     }
-    // for (auto conn : mod->connections()) {
-    //   (void)convert_connection(conn.second);
-    // }
+    for (auto conn : mod->connections()) {
+      (void)convert_connection(conn);
+    }
     return moduleOp;
   }
 };
