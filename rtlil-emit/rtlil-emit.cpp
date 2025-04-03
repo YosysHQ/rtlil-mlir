@@ -39,6 +39,7 @@ public:
       : ctx(context), b(mlir::OpBuilder(&context)), loc(b.getUnknownLoc()) {}
 
   rtlil::WireOp convert_wire(RTLIL::Wire *wire) {
+    log_debug("converting wire %s\n", log_id(wire));
     log_assert(!wiremap.contains(wire));
     // TODO custom return type
     return wiremap[wire] = b.create<rtlil::WireOp>(
@@ -54,6 +55,7 @@ public:
   }
 
   rtlil::ConstOp convert_const(RTLIL::Const *c) {
+    log_debug("converting const %s\n", log_const(*c));
     std::vector<mlir::Attribute> const_bits;
     for (auto bit : c->bits())
       const_bits.push_back(
@@ -65,6 +67,7 @@ public:
   }
 
   mlir::Value convert_sigspec(RTLIL::SigSpec sigspec) {
+    log_debug("converting sigspec %s\n", log_signal(sigspec));
     if (sigspec.is_fully_const()) {
       std::vector<mlir::Attribute> const_bits;
       RTLIL::Const domain_const = sigspec.as_const();
@@ -76,7 +79,6 @@ public:
       log_assert(wiremap.contains(wire));
       return wiremap[wire].getResult();
     } else {
-      log("%s\n", log_signal(sigspec));
       log_error("Found SigSpec that isn't a constant or full wire "
                 "connection, did you run splice?\n");
     }
@@ -87,6 +89,7 @@ public:
     std::vector<mlir::Value> connections;
     std::vector<mlir::Attribute> parameters;
     std::vector<mlir::Attribute> signature;
+    log_debug("converting cell %s\n", log_id(cell));
     for (auto [port, sigspec] : cell->connections()) {
       auto val = convert_sigspec(sigspec);
       connections.push_back(val);
@@ -111,11 +114,13 @@ public:
   }
 
   rtlil::WConnectionOp convert_connection(RTLIL::SigSig ss) {
+    log_debug("converting connection %s %s\n", log_signal(ss.first), log_signal(ss.second));
     return b.create<rtlil::WConnectionOp>(loc, convert_sigspec(ss.first),
                                           convert_sigspec(ss.second));
   }
 
   mlir::ModuleOp convert_module(RTLIL::Module *mod) {
+    log_debug("converting module %s\n", log_id(mod));
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(loc, mod->name.c_str()));
     b.setInsertionPointToStart(moduleOp.getBody());
     for (auto wire : mod->wires()) {
