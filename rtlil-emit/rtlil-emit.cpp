@@ -2,6 +2,7 @@
 #include "mlir/ExecutionEngine/OptUtils.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OwningOpRef.h"
+#include "mlir/IR/Verifier.h"
 #include "mlir/InitAllDialects.h"
 #include "mlir/InitAllPasses.h"
 #include "mlir/Parser/Parser.h"
@@ -75,7 +76,7 @@ public:
         std::vector<mlir::Attribute> const_bits;
         RTLIL::Const domain_const = sigspec.as_const();
         rtlil::ConstOp c = convert_const(&domain_const);
-        log_assert(c.verify().succeeded());
+        log_assert(mlir::verify(c).succeeded());
         signature.push_back(portattr);
         connections.push_back(c.getResult());
       } else if (sigspec.is_wire()) {
@@ -118,13 +119,13 @@ public:
     mlir::ModuleOp moduleOp(mlir::ModuleOp::create(loc, mod->name.c_str()));
     b.setInsertionPointToStart(moduleOp.getBody());
     for (auto wire : mod->wires()) {
-      log_assert(convert_wire(wire).verify().succeeded());
+      log_assert(mlir::verify(convert_wire(wire)).succeeded());
     }
     for (auto cell : mod->cells()) {
-      log_assert(convert_cell(cell).verify().succeeded());
+      log_assert(mlir::verify(convert_cell(cell)).succeeded());
     }
     for (auto conn : mod->connections()) {
-      log_assert(convert_connection(conn).verify().succeeded());
+      log_assert(mlir::verify(convert_connection(conn)).succeeded());
     }
     return moduleOp;
   }
