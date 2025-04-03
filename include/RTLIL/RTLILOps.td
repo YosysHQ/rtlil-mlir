@@ -67,7 +67,6 @@ def StateS1: I8EnumAttrCase<"S1", 1>;
 def StateSx: I8EnumAttrCase<"Sx", 2>;
 def StateSz: I8EnumAttrCase<"Sz", 3>;
 def StateSa: I8EnumAttrCase<"Sa", 4>;
-def StateSm: I8EnumAttrCase<"Sm", 5>;
 
 class I8EnumAttr<string name, string summary, list<I8EnumAttrCase> cases> :
     IntEnumAttr<I8, name, summary, cases> {
@@ -75,7 +74,7 @@ class I8EnumAttr<string name, string summary, list<I8EnumAttrCase> cases> :
 }
 
 def StateEnumAttr: I8EnumAttr<"StateEnum", "RTLIL::State model",
-    [StateS0, StateS1, StateSx, StateSz, StateSa, StateSm]> {
+    [StateS0, StateS1, StateSx, StateSz, StateSa]> {
   let stringToSymbolFnName = "ConvertToEnum";
   let symbolToStringFnName = "ConvertToString";
   let cppNamespace = "::rtlil";
