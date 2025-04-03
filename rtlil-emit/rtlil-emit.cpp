@@ -64,30 +64,35 @@ public:
                                     (mlir::ArrayAttr)aa);
   }
 
+  mlir::Value convert_sigspec(RTLIL::SigSpec sigspec) {
+    if (sigspec.is_fully_const()) {
+      std::vector<mlir::Attribute> const_bits;
+      RTLIL::Const domain_const = sigspec.as_const();
+      rtlil::ConstOp c = convert_const(&domain_const);
+      log_assert(mlir::verify(c).succeeded());
+      return c.getResult();
+    } else if (sigspec.is_wire()) {
+      RTLIL::Wire *wire = sigspec.as_wire();
+      log_assert(wiremap.contains(wire));
+      return wiremap[wire].getResult();
+    } else {
+      log("%s\n", log_signal(sigspec));
+      log_error("Found SigSpec that isn't a constant or full wire "
+                "connection, did you run splice?\n");
+    }
+  }
+
   rtlil::CellOp convert_cell(RTLIL::Cell *cell) {
     // is this smart?
     std::vector<mlir::Value> connections;
     std::vector<mlir::Attribute> parameters;
     std::vector<mlir::Attribute> signature;
     for (auto [port, sigspec] : cell->connections()) {
+      auto val = convert_sigspec(sigspec);
+      connections.push_back(val);
       auto portname = std::string(port.c_str());
       auto portattr = mlir::StringAttr::get(&ctx, portname);
-      if (sigspec.is_fully_const()) {
-        std::vector<mlir::Attribute> const_bits;
-        RTLIL::Const domain_const = sigspec.as_const();
-        rtlil::ConstOp c = convert_const(&domain_const);
-        log_assert(mlir::verify(c).succeeded());
-        signature.push_back(portattr);
-        connections.push_back(c.getResult());
-      } else if (sigspec.is_wire()) {
-        signature.push_back(portattr);
-        RTLIL::Wire *wire = sigspec.as_wire();
-        log_assert(wiremap.contains(wire));
-        connections.push_back(wiremap[wire].getResult());
-      } else {
-        log_error("Found SigSpec that isn't a constant or full wire "
-                  "connection, did you run splice?");
-      }
+      signature.push_back(portattr);
     }
     for (auto [param, value] : cell->parameters) {
       log_assert(value.is_fully_def());
@@ -106,13 +111,8 @@ public:
   }
 
   rtlil::WConnectionOp convert_connection(RTLIL::SigSig ss) {
-    SigSpec sslhs, ssrhs;
-    std::tie(sslhs, ssrhs) = ss;
-    RTLIL::Wire *lhs, *rhs;
-    log_assert(sslhs.is_wire() && ssrhs.is_wire());
-    std::tie(lhs, rhs) = std::make_tuple(sslhs.as_wire(), ssrhs.as_wire());
-    log_assert(wiremap.contains(lhs) && wiremap.contains(rhs));
-    return b.create<rtlil::WConnectionOp>(loc, wiremap[lhs], wiremap[rhs]);
+    return b.create<rtlil::WConnectionOp>(loc, convert_sigspec(ss.first),
+                                          convert_sigspec(ss.second));
   }
 
   mlir::ModuleOp convert_module(RTLIL::Module *mod) {
