@@ -63,6 +63,7 @@ public:
       const_bits.push_back(
           rtlil::StateEnumAttr::get(&ctx, (rtlil::StateEnum)bit));
     mlir::ArrayAttr aa = b.getArrayAttr(const_bits);
+    // TODO flags?
     // TODO custom return type
     return b.create<rtlil::ConstOp>(loc, mlir::IntegerType::get(&ctx, 32),
                                     (mlir::ArrayAttr)aa);
@@ -161,45 +162,97 @@ struct MlirBackend : public Backend {
 
 class RTLILifier {
   RTLIL::Design *design;
+  RTLIL::Const convert_const(rtlil::ConstOp op) {
+    std::vector<RTLIL::State> bits;
+    for (auto bit : op.getValueAttr()) {
+      unsigned char raw = llvm::cast<rtlil::StateEnumAttr>(bit).getInt();
+      log_assert(rtlil::symbolizeStateEnum(raw).has_value());
+      bits.push_back(static_cast<RTLIL::State>(raw));
+    }
+    return Const(bits);
+  }
+  RTLIL::SigSpec convert_signal(RTLIL::Module *mod, mlir::Value v) {
+    mlir::Operation *def = v.getDefiningOp();
+    if (auto constOp = mlir::dyn_cast<rtlil::ConstOp>(def)) {
+      return convert_const(constOp);
+    } else if (auto wireOp = mlir::dyn_cast<rtlil::WireOp>(def)) {
+      std::string wireName =
+          llvm::cast<mlir::StringAttr>(wireOp->getAttr("name")).str();
+      RTLIL::Wire *wire = mod->wire(wireName);
+      if (!wire)
+        log_error("Unknown wire: %s\n", wireName.c_str());
+      return wire;
+    } else {
+      def->dump();
+      log_error("Unhandled RTLIL dialect value producing op\n");
+    }
+  }
 
 public:
-  RTLILifier(RTLIL::Design* d) : design(d) {}
-  void convert_wire(RTLIL::Module* mod, rtlil::WireOp op) {
-    auto name = op->getAttr("name").cast<mlir::StringAttr>().str();
-    // mlir::IntegerType::get(&ctx, 32),
-    RTLIL::Wire* w = mod->addWire(name);
-    w->width = op->getAttr("width").cast<mlir::IntegerAttr>().getInt();
-    w->start_offset = op->getAttr("start_offset").cast<mlir::IntegerAttr>().getInt();
-    w->port_id = op->getAttr("port_id").cast<mlir::IntegerAttr>().getInt();
-    w->port_input = op->getAttr("port_input").cast<mlir::BoolAttr>().getValue();
-    w->port_output = op->getAttr("port_output").cast<mlir::BoolAttr>().getValue();
-    w->upto = op->getAttr("upto").cast<mlir::BoolAttr>().getValue();
-    w->is_signed = op->getAttr("is_signed").cast<mlir::BoolAttr>().getValue();
+  RTLILifier(RTLIL::Design *d) : design(d) {}
+  void convert_wire(RTLIL::Module *mod, rtlil::WireOp op) {
+    auto name = llvm::cast<mlir::StringAttr>(op->getAttr("name")).str();
+    RTLIL::Wire *w = mod->addWire(name);
+    w->width = llvm::cast<mlir::IntegerAttr>(op->getAttr("width")).getInt();
+    w->start_offset =
+        llvm::cast<mlir::IntegerAttr>(op->getAttr("start_offset")).getInt();
+    w->port_id = llvm::cast<mlir::IntegerAttr>(op->getAttr("port_id")).getInt();
+    w->port_input =
+        llvm::cast<mlir::BoolAttr>(op->getAttr("port_input")).getValue();
+    w->port_output =
+        llvm::cast<mlir::BoolAttr>(op->getAttr("port_output")).getValue();
+    w->upto = llvm::cast<mlir::BoolAttr>(op->getAttr("upto")).getValue();
+    w->is_signed =
+        llvm::cast<mlir::BoolAttr>(op->getAttr("is_signed")).getValue();
   }
-  void convert_cell(RTLIL::Module* mod, rtlil::CellOp op) {
+  void convert_cell(RTLIL::Module *mod, rtlil::CellOp op) {
+    std::string name = llvm::cast<mlir::StringAttr>(op->getAttr("name")).str();
+    std::string type = llvm::cast<mlir::StringAttr>(op->getAttr("type")).str();
+    RTLIL::Cell *c = mod->addCell(name, type);
+    std::vector<std::string> signature;
+    for (auto port : llvm::cast<mlir::ArrayAttr>(op->getAttr("ports"))) {
+      std::string portName = llvm::cast<mlir::StringAttr>(port).str();
+      signature.push_back(portName);
+    }
+    for (const auto &it : llvm::enumerate(op->getOperands())) {
+      auto conn = it.value();
+      log_assert(it.index() < signature.size());
+      auto portName = signature[it.index()];
+      c->setPort(portName, convert_signal(mod, conn));
+    }
+    for (auto param : llvm::cast<mlir::ArrayAttr>(op->getAttr("parameters"))) {
+      auto paramAttr = llvm::cast<rtlil::ParameterAttr>(param);
+      std::string paramName = paramAttr.getName().str();
+      int64_t paramValue = paramAttr.getValue().getInt();
+      c->setParam(paramName, paramValue);
+    }
   }
-  void convert_connection(RTLIL::Module* mod, rtlil::WConnectionOp op) {
+  void convert_connection(RTLIL::Module *mod, rtlil::WConnectionOp op) {
+    mlir::Value lhs = op.getLhs();
+    mlir::Value rhs = op.getRhs();
+    mod->connect(convert_signal(mod, lhs), convert_signal(mod, rhs));
   }
-  void convert_const(RTLIL::Module* mod, rtlil::ConstOp op) {
-  }
+
   void convert_module(mlir::ModuleOp moduleOp) {
     llvm::StringRef moduleName = moduleOp.getName().value_or("");
-    log_assert((moduleName.size() != 0) && "Unnamed module op in RTLIL dialect");
-    RTLIL::Module* new_module = design->addModule(moduleName.str());
+    log_assert((moduleName.size() != 0) &&
+               "Unnamed module op in RTLIL dialect");
+    RTLIL::Module *new_module = design->addModule(moduleName.str());
     for (auto &op : moduleOp.getBody()->getOperations()) {
-      if (auto wireOp = mlir::dyn_cast<rtlil::WireOp>(op))
+      if (auto wireOp = mlir::dyn_cast<rtlil::WireOp>(op)) {
         convert_wire(new_module, wireOp);
-      else if (auto cellOp = mlir::dyn_cast<rtlil::CellOp>(op))
+      } else if (auto cellOp = mlir::dyn_cast<rtlil::CellOp>(op)) {
         convert_cell(new_module, cellOp);
-      else if (auto connOp = mlir::dyn_cast<rtlil::WConnectionOp>(op))
+      } else if (auto connOp = mlir::dyn_cast<rtlil::WConnectionOp>(op)) {
         convert_connection(new_module, connOp);
-      else if (auto constOp = mlir::dyn_cast<rtlil::ConstOp>(op))
-        convert_const(new_module, constOp);
-      else {
+      } else if (auto constOp = mlir::dyn_cast<rtlil::ConstOp>(op)) {
+        // skip, we do this on demand
+      } else {
         op.dump();
         log_error("Unhandled RTLIL dialect op\n");
       }
     }
+    new_module->fixup_ports();
   }
 };
 
@@ -232,11 +285,11 @@ struct MlirFrontend : public Frontend {
       llvm::errs() << "Error can't load file " << filename << "\n";
     }
     auto moduleOp = std::make_shared<mlir::ModuleOp>(owningModule.release());
-    llvm::outs() << "yeah we got some stuff\n";
+    // llvm::outs() << "yeah we got some stuff\n";
     // moduleOp->print(llvm::outs());
     // auto opIterator = .begin();
     RTLILifier convertor(design);
-    for (auto& operation : moduleOp->getOps()) {
+    for (auto &operation : moduleOp->getOps()) {
       mlir::ModuleOp op = llvm::dyn_cast<mlir::ModuleOp>(operation);
       if (!op)
         log_assert(false && "Top level MLIR entity isn't a module");

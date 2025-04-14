@@ -56,7 +56,7 @@ def ParamAttr : RTLIL_Attr<"Parameter", "param"> {
 }
 
 def ParametersAttr
-  : TypedArrayAttrBase<ParamAttr, "port to wire connections">;
+  : TypedArrayAttrBase<ParamAttr, "cell parameters">;
 
 // Connectivity
 
