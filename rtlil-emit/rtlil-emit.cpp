@@ -177,7 +177,7 @@ class RTLILifier {
       return convert_const(constOp);
     } else if (auto wireOp = mlir::dyn_cast<rtlil::WireOp>(def)) {
       std::string wireName =
-          llvm::cast<mlir::StringAttr>(wireOp->getAttr("name")).str();
+          llvm::cast<mlir::StringAttr>(wireOp.getNameAttr()).str();
       RTLIL::Wire *wire = mod->wire(wireName);
       if (!wire)
         log_error("Unknown wire: %s\n", wireName.c_str());
@@ -191,36 +191,30 @@ class RTLILifier {
 public:
   RTLILifier(RTLIL::Design *d) : design(d) {}
   void convert_wire(RTLIL::Module *mod, rtlil::WireOp op) {
-    auto name = llvm::cast<mlir::StringAttr>(op->getAttr("name")).str();
-    RTLIL::Wire *w = mod->addWire(name);
-    w->width = llvm::cast<mlir::IntegerAttr>(op->getAttr("width")).getInt();
-    w->start_offset =
-        llvm::cast<mlir::IntegerAttr>(op->getAttr("start_offset")).getInt();
-    w->port_id = llvm::cast<mlir::IntegerAttr>(op->getAttr("port_id")).getInt();
-    w->port_input =
-        llvm::cast<mlir::BoolAttr>(op->getAttr("port_input")).getValue();
-    w->port_output =
-        llvm::cast<mlir::BoolAttr>(op->getAttr("port_output")).getValue();
-    w->upto = llvm::cast<mlir::BoolAttr>(op->getAttr("upto")).getValue();
-    w->is_signed =
-        llvm::cast<mlir::BoolAttr>(op->getAttr("is_signed")).getValue();
+    RTLIL::Wire *w = mod->addWire(std::string(op.getName()));
+    w->width = op.getWidth();
+    w->start_offset = op.getStartOffset();
+    w->port_id = op.getPortId();
+    w->port_input = op.getPortInput();
+    w->port_output = op.getPortOutput();
+    w->upto = op.getUpto();
+    w->is_signed = op.getIsSigned();
   }
   void convert_cell(RTLIL::Module *mod, rtlil::CellOp op) {
-    std::string name = llvm::cast<mlir::StringAttr>(op->getAttr("name")).str();
-    std::string type = llvm::cast<mlir::StringAttr>(op->getAttr("type")).str();
-    RTLIL::Cell *c = mod->addCell(name, type);
+    RTLIL::Cell *c =
+        mod->addCell(std::string(op.getName()), std::string(op.getType()));
     std::vector<std::string> signature;
-    for (auto port : llvm::cast<mlir::ArrayAttr>(op->getAttr("ports"))) {
+    for (auto port : op.getPorts()) {
       std::string portName = llvm::cast<mlir::StringAttr>(port).str();
       signature.push_back(portName);
     }
-    for (const auto &it : llvm::enumerate(op->getOperands())) {
+    for (const auto &it : llvm::enumerate(op.getOperands())) {
       auto conn = it.value();
       log_assert(it.index() < signature.size());
       auto portName = signature[it.index()];
       c->setPort(portName, convert_signal(mod, conn));
     }
-    for (auto param : llvm::cast<mlir::ArrayAttr>(op->getAttr("parameters"))) {
+    for (auto param : op.getParameters()) {
       auto paramAttr = llvm::cast<rtlil::ParameterAttr>(param);
       std::string paramName = paramAttr.getName().str();
       int64_t paramValue = paramAttr.getValue().getInt();
