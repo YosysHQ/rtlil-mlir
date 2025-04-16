@@ -25,7 +25,7 @@ def RTLIL_Dialect : Dialect {
     }];
     let cppNamespace = "::rtlil";
     // let hasConstantMaterializer = 1;
-    // let useDefaultTypePrinterParser = 1;
+    let useDefaultTypePrinterParser = 1;
     let useDefaultAttributePrinterParser = 1;
 }
 
@@ -41,10 +41,8 @@ class RTLIL_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
   let mnemonic = attrMnemonic;
 }
 
-// class RTLIL_Type<string name, string typeMnemonic, list<Trait> traits = []>
-//     : DialectType<RTLIL_Dialect, name, traits> {
-//   let mnemonic = typeMnemonic;
-// }
+class RTLIL_Type<string name, list<Trait> traits = []>
+  : TypeDef<RTLIL_Dialect, name, traits> { }
 
 // Parameters
 
@@ -80,7 +78,16 @@ def StateEnumAttr: I8EnumAttr<"StateEnum", "RTLIL::State model",
   let cppNamespace = "::rtlil";
 }
 
-def RTLILValue : DialectType<RTLIL_Dialect, CPred<"true">, "value"> {}
+// A parameterized integer type. Declares the hw::IntType in C++.
+def MValueTypeImpl : RTLIL_Type<"MValue"> {
+  let summary = "parameterized-width RTLIL::State sequence";
+  let parameters = (ins "::mlir::TypedAttr":$width);
+  let typeName = "rtlil.val";
+  let assemblyFormat = "`[` $width `]`";
+  let mnemonic = "val";
+}
+
+def RTLILValue : DialectType<RTLIL_Dialect, CPred<"::rtlil::isMValueType($_self)">, "value">;
 
 def ConstAttr
   : TypedArrayAttrBase<StateEnumAttr, "constant multi-valued bitvec">;

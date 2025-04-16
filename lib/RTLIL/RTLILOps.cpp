@@ -17,6 +17,7 @@
 
 #include "RTLIL/RTLILOps.h"
 #include "RTLIL/RTLILDialect.h"
+#include "RTLIL/RTLILTypes.h"
 #include "mlir/IR/OpImplementation.h"
 
 #define GET_OP_CLASSES

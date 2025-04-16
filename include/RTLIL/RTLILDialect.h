@@ -32,5 +32,8 @@
 #define GET_OP_CLASSES
 #include "RTLIL/RTLILOps.h.inc"
 #include "RTLIL/RTLILOpsDialect.h.inc"
+#include "RTLIL/RTLILTypesGen.h.inc"
+
+#include "RTLIL/RTLILTypes.h"
 
 #endif // RTLIL_RTLILDIALECT_H

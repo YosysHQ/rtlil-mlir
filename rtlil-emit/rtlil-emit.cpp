@@ -43,9 +43,10 @@ public:
   rtlil::WireOp convert_wire(RTLIL::Wire *wire) {
     log_debug("converting wire %s\n", log_id(wire));
     log_assert(!wiremap.contains(wire));
-    // TODO custom return type
     return wiremap[wire] = b.create<rtlil::WireOp>(
-               loc, mlir::IntegerType::get(&ctx, 32),
+               loc,
+               rtlil::MValueType::get(
+                   &ctx, mlir::IntegerAttr::get(b.getI32Type(), wire->width)),
                mlir::StringAttr::get(&ctx, wire->name.c_str()),
                mlir::IntegerAttr::get(b.getI32Type(), wire->width),
                mlir::IntegerAttr::get(b.getI32Type(), wire->start_offset),
@@ -64,9 +65,11 @@ public:
           rtlil::StateEnumAttr::get(&ctx, (rtlil::StateEnum)bit));
     mlir::ArrayAttr aa = b.getArrayAttr(const_bits);
     // TODO flags?
-    // TODO custom return type
-    return b.create<rtlil::ConstOp>(loc, mlir::IntegerType::get(&ctx, 32),
-                                    (mlir::ArrayAttr)aa);
+    return b.create<rtlil::ConstOp>(
+        loc,
+        rtlil::MValueType::get(
+            &ctx, mlir::IntegerAttr::get(b.getI32Type(), const_bits.size())),
+        (mlir::ArrayAttr)aa);
   }
 
   mlir::Value convert_sigspec(RTLIL::SigSpec sigspec) {
@@ -261,7 +264,6 @@ struct MlirFrontend : public Frontend {
       break;
     }
     extra_args(f, filename, args, argidx);
-    //   llvm::raw_istream osis(*f);
     mlir::MLIRContext ctx;
     ctx.getOrLoadDialect<rtlil::RTLILDialect>();
     llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
@@ -279,9 +281,6 @@ struct MlirFrontend : public Frontend {
       llvm::errs() << "Error can't load file " << filename << "\n";
     }
     auto moduleOp = std::make_shared<mlir::ModuleOp>(owningModule.release());
-    // llvm::outs() << "yeah we got some stuff\n";
-    // moduleOp->print(llvm::outs());
-    // auto opIterator = .begin();
     RTLILifier convertor(design);
     for (auto &operation : moduleOp->getOps()) {
       mlir::ModuleOp op = llvm::dyn_cast<mlir::ModuleOp>(operation);
