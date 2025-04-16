@@ -23,6 +23,13 @@ Manual approach:
 - `./steps.sh`
 - `ninja -C build`
 
+## Demo
+
+- `cd examples/cpu`
+- `yosys -m ../../build/lib/librtlil-emit.so demo.ys`
+
+Look at `cpu.mlir` and the diff between `before.il` and `after.il`
+
 ## Licensing
 
 This code base is dual-licensed for compatibility with both the Yosys and LLVM ecosystems under Apache 2 with LLVM exceptions as well as ISC. See `LICENSE.llvm` and `LICENSE.isc`. Copyright (C) 2025 - 2025 YosysHQ GmbH

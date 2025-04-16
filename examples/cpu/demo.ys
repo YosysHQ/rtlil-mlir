@@ -1,0 +1,38 @@
+read_rtlil cpu.noattr.il
+
+# ---------------------------------------------------------------------------
+# Prerequisites for an otherwise arbitrary design
+# to be cleanly roundtrippable
+# (+ no pre-existing attributes as we don't have like setattr -unset-all)
+proc -noopt
+setattr -unset full_case
+hierarchy -check -auto-top
+opt_clean -x
+# We never generate these in yosys, if we have some then it's because
+# of external generators. This is only needed to get a clean roundtrip
+select -assert-count 0 t:$buf t:$concat %u t:$slice %u
+# ---------------------------------------------------------------------------
+# This is the canonical "before" snapshot
+dump --sorted -o before.il
+# ---------------------------------------------------------------------------
+# This normalization transforms the design, but discards minimal information
+bufnorm -nomode -buf -chain
+splice -wires
+dump --sorted -o mid.il
+# ---------------------------------------------------------------------------
+# Roundtrip through the MLIR RTLIL dialect
+write_mlir cpu.mlir
+design -reset
+read_mlir cpu.mlir
+# ---------------------------------------------------------------------------
+# Reverse the normalization
+simplemap t:$buf t:$concat %u t:$slice %u
+# Erase wires created by splice before we erase anything else
+setattr -set keep 1 w:*splice* %n
+opt_clean -x
+# Erase wires created by bufnorm
+setattr -unset keep
+opt_clean -x
+# We now have before.il ≈ after.il
+# only differing by a tiny amount of public wire aliasing
+dump --sorted -o after.il
