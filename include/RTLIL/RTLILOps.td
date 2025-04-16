@@ -114,14 +114,14 @@ def WireOp : RTLIL_Op<"wire"> {
 def CellOp : RTLIL_Op<"cell"> {
   let arguments = (ins StrAttr:$name
                        ,StrAttr:$type
-                       ,Variadic<AnyType>:$connections
+                       ,Variadic<RTLILValue>:$connections
                        ,TypedArrayAttrBase<StrAttr, "port names">:$ports
                        ,ParametersAttr:$parameters
   );
 }
 
 def WConnectionOp : RTLIL_Op<"wconnection"> {
-  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let arguments = (ins RTLILValue:$lhs, RTLILValue:$rhs);
 }
                       //  , // TODO back to FlatSymbolRefAttr?
   // let results = (outs Variadic<AnyType>:$results);
